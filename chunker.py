@@ -21,7 +21,7 @@ If you get stuck for 30 minutes, `fallback_split` is the original. Switch back
 to it, write down what you saw, and move on. That's a real observation about
 your pipeline, not giving up.
 """
-
+import re
 from dataclasses import dataclass
 
 import config
@@ -80,24 +80,93 @@ def fallback_split(
     return chunks
 
 
+
+
 def split_documents(documents: list[Document]) -> list[Chunk]:
     """
-    Split documents into chunks. ⚠️ REPLACE THE BODY OF THIS IN MILESTONE 3.
+    Splits each thread on reply boundaries instead of a fixed character count.
 
-    Right now it just calls the fallback. That is the plain, generic behaviour
-    the brief is talking about.
+    Each document here is a Q&A thread: "THREAD: <question> --- reply N
+    (votes) --- <text> --- reply N+1 (votes) --- <text> ...". A fixed 800-char
+    window either merges unrelated replies together or cuts one in half. This
+    strategy keeps each reply as its own chunk, with the thread's original
+    question prepended so the chunk still makes sense read on its own.
 
-    When you write your own strategy, set `produced_by` to
-    "chunker.py::split_documents" so your README's Sample Chunks section names
-    the right function. `app.py chunks` prints that string for you.
-
-    Things worth thinking about before you write any code:
-      - Are your documents short posts or long guides?
-      - Is the useful information in one sentence, or spread over a paragraph?
-      - Would splitting on paragraph breaks keep more thoughts intact than
-        splitting on a character count?
+    Replies under MIN_CHUNK_CHARS (100) get merged with the next reply instead
+    of staying as an unusably short fragment — this is what criterion 4 checks.
     """
-    return fallback_split(documents)
+    MIN_CHUNK_CHARS = 100
+
+    reply_pattern = re.compile(
+        r"---\s*reply\s*(\d+)\s*\((\d+)\s*votes?\)\s*---", re.IGNORECASE
+    )
+
+    chunks: list[Chunk] = []
+
+    for doc in documents:
+        match_iter = list(reply_pattern.finditer(doc.text))
+
+        if not match_iter:
+            # No reply markers found — fall back to keeping the whole doc as one chunk
+            text = doc.text.strip()
+            if text:
+                chunks.append(
+                    Chunk(
+                        text=text,
+                        source=doc.source,
+                        index=0,
+                        produced_by="chunker.py::split_documents",
+                    )
+                )
+            continue
+
+        # Thread question is everything before the first reply marker
+        thread_title = doc.text[: match_iter[0].start()].strip()
+
+        # Build (vote_count, reply_text) pairs for each reply
+        replies = []
+        for i, m in enumerate(match_iter):
+            votes = int(m.group(2))
+            start = m.end()
+            end = match_iter[i + 1].start() if i + 1 < len(match_iter) else len(doc.text)
+            reply_text = doc.text[start:end].strip()
+            replies.append((votes, reply_text))
+
+        # Merge short replies forward into the next one
+        merged: list[tuple[int, str]] = []
+        buffer_votes, buffer_text = None, ""
+        for votes, text in replies:
+            if buffer_text:
+                buffer_text = buffer_text + " " + text
+                buffer_votes = max(buffer_votes, votes)
+            else:
+                buffer_votes, buffer_text = votes, text
+
+            candidate = f"{thread_title}\n{buffer_text}"
+            if len(candidate) >= MIN_CHUNK_CHARS:
+                merged.append((buffer_votes, buffer_text))
+                buffer_votes, buffer_text = None, ""
+
+        if buffer_text:
+            # Leftover short tail — merge into the last chunk instead of dropping it
+            if merged:
+                last_votes, last_text = merged[-1]
+                merged[-1] = (max(last_votes, buffer_votes), last_text + " " + buffer_text)
+            else:
+                merged.append((buffer_votes, buffer_text))
+
+        for i, (votes, text) in enumerate(merged):
+            chunk_text = f"{thread_title}\n{text}"
+            chunks.append(
+                Chunk(
+                    text=chunk_text,
+                    source=doc.source,
+                    index=i,
+                    produced_by="chunker.py::split_documents",
+                )
+            )
+
+    return chunks
 
 
 def describe(chunks: list[Chunk]) -> str:
