@@ -57,41 +57,30 @@ in at least 4 of 5 tries.
 
 ## 4. Something about your chunks
 
-<!-- YOU WRITE THIS ONE.
-
-     How would you know if your chunks were the right size? Name something
-     countable or observable.
-
-     Examples of the right shape — don't copy these, they should come from
-     what you actually saw in Milestone 3:
-       - "At least 4 of 5 sampled chunks read as a complete thought, with no
-          sentence cut in half at either end."
-       - "No chunk is shorter than 200 characters, since anything below that
-          in my corpus turned out to be a heading with no content under it." -->
-
+No chunk in my final version is shorter than 100 characters, because
+100 characters is roughly enough to hold one complete short reply.
 
 
 **Why this target:**
-
+The starter's chunker produced a 2-character fragment when I indexed
+advice_threads — not enough text to answer anything. 100 characters is
+short enough to let brief replies through but rules out fragments like that.
 
 
 ---
 
 ## 5. Your choice
 
-<!-- YOU WRITE THIS ONE TOO.
-
-     Pick something you actually care about getting right. It could be about
-     speed, about refusals, about a particular kind of question your corpus
-     handles badly, about source attribution being correct rather than merely
-     present — anything, as long as it names a number or an observable
-     outcome. -->
+When multiple chunks are retrieved for a question, the chunk from the
+highest-voted reply is shown first, above other retrieved chunks.
 
 
 
 **Why this target:**
 
-
+Votes in these threads reflect which answer other students found most
+useful or reliable. A system that buries the highest-voted reply behind
+lower-voted ones isn't surfacing the answer people actually trusted.
 
 ---
 
