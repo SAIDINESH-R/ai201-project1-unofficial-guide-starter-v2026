@@ -1,6 +1,6 @@
 # The Unofficial Guide
 
-<!-- Replace this line with your name and which corpus you picked. -->
+<!--Saidinesh R — advice_threads corpus. -->
 
 > **This file is your submission.** Fill it in as you go — most sections get
 > written during the milestone that produces them, not at the end.
@@ -21,26 +21,34 @@
 
 ## What This Does
 
-<!-- Three or four sentences. Which corpus you picked, and the kinds of
-     questions your system answers. Write it for someone who has never seen
-     this repo.
-
-     Milestone 5. -->
+This system answers questions about campus advice threads — short Q&A-style
+discussions where students ask things like "is a bike worth it?" or "how do
+meal plan tiers work?" and others reply with tips, often disagreeing with each
+other. It answers specific factual questions (deadlines, costs, policies) by
+retrieving the most relevant reply from these threads and citing which thread
+it came from.
 
 ## Chunking Strategy
 
 **Chunk size:**
 **Overlap:**
 
-<!-- What about YOUR documents made you pick these numbers? Short posts and
-     long sectioned guides don't want the same chunking, and "800 seemed
-     reasonable" earns nothing. Point at something you noticed when you read
-     the documents in Milestone 1.
+**Chunk size:** variable — one reply per chunk (merged forward if under 100 characters)
+**Overlap:** none
 
-     If you changed your mind partway through, say so and say why. That's worth
-     more than pretending you got it right first time.
+Each document is a Q&A thread with multiple replies separated by
+"--- reply N (votes) ---" markers. The starter's fixed 800-character chunker
+barely split anything (23 documents became 26 chunks) and produced a
+2-character fragment from a document that didn't divide evenly at the
+800-character mark — clearly unusable.
 
-     Milestone 3. -->
+I switched to splitting on reply boundaries instead, since each reply in
+these threads is usually a self-contained answer to a sub-question. I
+prepended the thread's original question to every chunk so it stays readable
+on its own. Replies shorter than 100 characters get merged into the next
+reply rather than kept as tiny fragments. This produced 75 chunks averaging
+174 characters, with a shortest chunk of 104 characters — no more unusable
+fragments.
 
 ## Sample Chunks
 
@@ -90,19 +98,17 @@ thread_meal_plan_tier.txt, thread_pass_fail.txt
 ```
 ```
 
-**My relevance cutoff:**
+**My relevance cutoff:** 0.6 (kept the starter's default)
 
-<!-- The number you set in config.py, and how you got there.
 
-     You ran five questions your corpus covers and the five in OUT_OF_SCOPE
-     that it clearly doesn't, and wrote down the best distance for each. What
-     did those two groups look like? Where was the gap? Put the actual numbers
-     here — the table below wants all ten rows.
-
-     Milestone 4. -->
+I didn't have time this unit to run the full 5 in-scope / 5 out-of-scope
+comparison to tune this further. One real query I ran came back with a best
+distance of 0.158, well under the 0.6 cutoff, suggesting the default is
+reasonable for this corpus, but this needs more testing.
 
 | Question | In corpus? | Best distance |
 |---|---|---|
+| How many times can I change my meal plan tier? | Yes | 0.158 |
 |  |  |  |
 
 ## How I Used AI
@@ -117,9 +123,17 @@ thread_meal_plan_tier.txt, thread_pass_fail.txt
      Milestone 5. -->
 
 **1.**
+I asked Claude to help write the chunking function in chunker.py,
+since I was short on time and hadn't worked with regex before. It suggested
+splitting on the "--- reply ---" markers and merging short replies forward
+so nothing stayed under 100 characters. I ran it, checked the output (shortest
+chunk went from 2 characters to 104), and kept it as given since it matched
+what I'd noticed in Milestone 1 about replies being self-contained.
 
 **2.**
-
+I used Claude to sanity-check my acceptance criteria wording — I
+described what I wanted (a minimum chunk length, and votes mattering for
+ranking) and it helped me phrase them as testable sentences with numbers.
 <!-- ── Stretch features ─────────────────────────────────────────────────────
      Doing one? Say so here BEFORE you start. A feature this README never
      claims earns nothing.
